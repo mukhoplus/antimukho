@@ -1,0 +1,4 @@
+.env.local
+.antigravity/cache/
+.antigravity/history/
+.antigravity/local_state.json

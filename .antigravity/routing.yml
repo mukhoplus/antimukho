@@ -1,0 +1,98 @@
+version: "1.0"
+description: "Made By Mukho - Antigravity Hybrid Routing Rules"
+
+# [IDE 환경 가이드]
+# Antigravity IDE 내부의 Agent는 런타임에 실행 모델을 자체 변경할 수 없습니다.
+# 따라서 Agent는 아래 규칙을 기반으로 현재 작업이 complex, critical_bug에 해당하거나
+# 에스컬레이션/재시도 조건에 도달했을 때 답변 하단에 사용자에게 모델 변경을 검토하도록 권장(TIP 안내)합니다.
+
+# 1. 작업 분류 기준
+classification:
+  priority:
+    - critical_bug
+    - complex
+    - simple
+
+  default: simple
+
+  rules:
+    simple:
+      - "단일 파일 또는 소규모 파일 수정"
+      - "기존 패턴을 따르는 반복적인 구현"
+      - "단순 UI, CSS, 문서 작업"
+
+    complex:
+      - "다수 파일 및 도메인에 영향을 주는 변경"
+      - "핵심 비즈니스 로직 및 알고리즘 구현"
+      - "아키텍처 및 데이터 흐름 변경"
+
+    critical_bug:
+      - "데이터 손실 가능성이 있는 오류"
+      - "인증 및 권한 관련 치명적 오류"
+      - "반복적인 수정에도 해결되지 않는 오류"
+
+# 2. Agent / Model Routing
+agent_routing:
+  # 프로젝트 설계/분석
+  - intent: ["architect", "design", "analyze"]
+    description: "프로젝트 초기 설계, 구조 분석 및 대형 컨텍스트 파악"
+    primary_model: "claude-4.6-sonnet"
+    fallback_model: "gemini-3.1-pro"
+
+  # 단순 구현/수정
+  - intent: ["simple", "ui", "css", "boilerplate", "docs"]
+    description: "단순 UI 수정, 파일 생성, 반복적인 코드 작성"
+    primary_model: "gemini-3.8-flash"
+
+  # 심화 구현/수정
+  - intent: ["complex", "logic", "algorithm", "refactor"]
+    description: "핵심 비즈니스 로직, 복잡한 상태 관리, 알고리즘 구현"
+    primary_model: "claude-4.6-sonnet"
+    fallback_model: "gemini-3.1-pro"
+
+  # 중대한 버그(에스컬레이션)
+  - intent: ["critical_bug", "unresolved", "sos"]
+    description: "해결되지 않는 치명적 에러, 깊은 추론이 필요한 디버깅"
+    primary_model: "claude-4.6-sonnet"
+    fallback_model: "gemini-3.1-pro"
+
+    escalation:
+      enabled: true
+      target_model: "claude-opus"
+      after_retries: 3
+      require_approval: true
+
+# 3. Fallback 정책
+fallback_policy:
+  enabled: true
+  triggers:
+    - model_error
+    - timeout
+    - unavailable
+  exclude:
+    - task_failure
+    - verification_failure
+  preserve_context: true
+
+# 4. Retry 정책
+retry_policy:
+  enabled: true
+  max_retries: 3
+  retry_on:
+    - compilation_failure
+    - test_failure
+    - lint_failure
+  require_error_analysis: true
+  record_attempts: true
+
+# 5. Routing 공통 정책
+routing_policy:
+  escalation_on_task_failure: true
+  preserve_context: true
+  preserve_previous_attempts: true
+
+# 6. 사용자 승인 정책
+approval_policy:
+  escalation: true
+  destructive_operations: true
+  scope_expansion: true
